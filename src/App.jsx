@@ -1,54 +1,8 @@
 import { useState } from "react";
 
-const scenarios = {
-  sales: {
-    answer:
-      "Total penjualan 7 hari terakhir adalah Rp 245.000.000, naik 12% dibanding periode sebelumnya.",
-    chartTitle: "Trend Penjualan 7 Hari",
-    chart: [
-      { label: "05 Mar", value: 32 },
-      { label: "06 Mar", value: 28 },
-      { label: "07 Mar", value: 35 },
-      { label: "08 Mar", value: 31 },
-      { label: "09 Mar", value: 38 },
-      { label: "10 Mar", value: 40 },
-      { label: "11 Mar", value: 41 },
-    ],
-  },
-  branch: {
-    answer:
-      "Cabang terbaik minggu ini adalah Jakarta Pusat, disusul Bandung dan Surabaya.",
-    chartTitle: "Top Cabang",
-    chart: [
-      { label: "Jkt Pusat", value: 68 },
-      { label: "Bandung", value: 54 },
-      { label: "Surabaya", value: 49 },
-      { label: "Bekasi", value: 42 },
-      { label: "Tangerang", value: 37 },
-    ],
-  },
-  product: {
-    answer:
-      "Produk dengan omzet tertinggi minggu ini adalah Beras Premium, Minyak Goreng 2L, dan Gula Pasir.",
-    chartTitle: "Top Produk",
-    chart: [
-      { label: "Beras", value: 26 },
-      { label: "Minyak", value: 23 },
-      { label: "Gula", value: 21 },
-      { label: "Telur", value: 19 },
-      { label: "Mie", value: 17 },
-    ],
-  },
-};
-
-function detectScenario(prompt) {
-  const text = prompt.toLowerCase();
-  if (text.includes("cabang")) return scenarios.branch;
-  if (text.includes("produk") || text.includes("barang")) return scenarios.product;
-  return scenarios.sales;
-}
-
 function MiniChart({ title, data }) {
+  if (!data?.length) return null;
+
   const maxValue = Math.max(...data.map((item) => item.value));
 
   return (
@@ -81,7 +35,7 @@ function MessageBubble({ msg }) {
   if (isUser) {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[80%] rounded-2xl bg-slate-900 text-white px-4 py-3 text-sm">
+        <div className="max-w-[80%] rounded-2xl bg-slate-900 text-white px-4 py-3 text-sm leading-6">
           {msg.text}
         </div>
       </div>
@@ -90,7 +44,7 @@ function MessageBubble({ msg }) {
 
   return (
     <div className="flex justify-start">
-      <div className="max-w-[90%] rounded-2xl bg-slate-100 text-slate-800 px-4 py-3 text-sm">
+      <div className="max-w-[90%] rounded-2xl bg-slate-100 text-slate-800 px-4 py-3 text-sm leading-6">
         <div>{msg.text}</div>
         {msg.chart && <MiniChart title={msg.chartTitle} data={msg.chart} />}
       </div>
@@ -100,30 +54,52 @@ function MessageBubble({ msg }) {
 
 export default function App() {
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      text: "Halo, saya siap membantu report penjualan, cabang, dan produk.",
+      text: "Halo, saya siap membantu Anda. Anda bisa chat biasa atau meminta data seperti penjualan, cabang, dan produk.",
     },
   ]);
 
-  const runPrompt = (prompt) => {
-    if (!prompt.trim()) return;
+  const runPrompt = async (prompt) => {
+    if (!prompt.trim() || loading) return;
 
-    const scenario = detectScenario(prompt);
-
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", text: prompt },
-      {
-        role: "assistant",
-        text: scenario.answer,
-        chartTitle: scenario.chartTitle,
-        chart: scenario.chart,
-      },
-    ]);
-
+    setMessages((prev) => [...prev, { role: "user", text: prompt }]);
     setInput("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("http://localhost:3001/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: prompt }),
+      });
+
+      const data = await res.json();
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: data.text || "Maaf, saya belum bisa menjawab saat ini.",
+          chartTitle: data.chartTitle,
+          chart: data.chart,
+        },
+      ]);
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: "Maaf, koneksi ke server gagal. Pastikan backend berjalan di http://localhost:3001.",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = (e) => {
@@ -132,9 +108,12 @@ export default function App() {
   };
 
   const quickPrompts = [
+    "Halo",
     "Tampilkan penjualan 7 hari terakhir",
     "Tampilkan performa cabang minggu ini",
     "Top produk minggu ini",
+    "Tampilkan data cabang Papua tahun 1990",
+    "Kamu bisa bantu apa?",
   ];
 
   return (
@@ -144,7 +123,7 @@ export default function App() {
           <div className="mb-4">
             <h1 className="text-2xl font-semibold">BI Chatbot Demo</h1>
             <p className="text-sm text-slate-500 mt-1">
-              Menudahkan Anda mendapatkan insight penjualan, performa cabang, dan produk hanya dengan bertanya!
+              Chat biasa, permintaan data, dan chart dalam satu tampilan.
             </p>
           </div>
 
@@ -153,7 +132,8 @@ export default function App() {
               <button
                 key={prompt}
                 onClick={() => runPrompt(prompt)}
-                className="mr-2 mb-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm hover:bg-slate-100"
+                className="mr-2 mb-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm hover:bg-slate-100 disabled:opacity-50"
+                disabled={loading}
               >
                 {prompt}
               </button>
@@ -164,20 +144,30 @@ export default function App() {
             {messages.map((msg, idx) => (
               <MessageBubble key={idx} msg={msg} />
             ))}
+
+            {loading && (
+              <div className="flex justify-start">
+                <div className="max-w-[90%] rounded-2xl bg-slate-100 text-slate-500 px-4 py-3 text-sm">
+                  Sedang memproses...
+                </div>
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Tulis pertanyaan report..."
+              placeholder="Tulis pertanyaan atau chat biasa..."
               className="flex-1 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500"
+              disabled={loading}
             />
             <button
               type="submit"
-              className="rounded-2xl bg-blue-600 text-white px-4 py-3 hover:bg-blue-700"
+              className="rounded-2xl bg-blue-600 text-white px-4 py-3 hover:bg-blue-700 disabled:opacity-50"
+              disabled={loading}
             >
-              Kirim
+              {loading ? "Proses..." : "Kirim"}
             </button>
           </form>
         </div>

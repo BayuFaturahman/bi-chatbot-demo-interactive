@@ -9,13 +9,29 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "openai": "^6.27.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
     "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.4.0",
     "tailwindcss": "^4.0.0",
-    "@tailwindcss/vite": "^4.0.0"
-  }
+    "vite": "^5.4.0"
+  },
+  "description": "## Jalankan di local",
+  "main": "vite.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BayuFaturahman/bi-chatbot-demo-interactive.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/BayuFaturahman/bi-chatbot-demo-interactive/issues"
+  },
+  "homepage": "https://github.com/BayuFaturahman/bi-chatbot-demo-interactive#readme"
 }

@@ -70,8 +70,8 @@ export default function App() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:3001/api/chat", {
-        method: "POST",
+      const res = await fetch("/api/chat", {
+                method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
